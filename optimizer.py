@@ -5,7 +5,6 @@ from model import predict_price
 # Load dataset
 data = pd.read_csv("data/real_mandi_data.csv")
 
-# Rename columns
 data = data.rename(columns={
     "STATE": "state",
     "District Name": "district",
@@ -18,6 +17,17 @@ data = data.rename(columns={
 data["date"] = pd.to_datetime(data["date"], errors="coerce")
 data = data.dropna()
 
+def generate_explanation(state, commodity, market, price, profit):
+    explanation = (
+        f"For {commodity} in {state}, the market '{market}' "
+        f"is recommended because it has the highest predicted price "
+        f"of ₹{round(price,2)} per unit. "
+        f"This results in an expected profit of ₹{round(profit,2)} "
+        f"after accounting for transport cost. "
+        f"The recommendation considers regional trends and seasonal patterns."
+    )
+    return explanation
+
 def recommend_market(state, commodity, quantity):
 
     today = datetime.now()
@@ -25,16 +35,13 @@ def recommend_market(state, commodity, quantity):
     month = today.month
     day = today.day
 
-    # Filter valid rows
     filtered = data[
         (data["state"] == state) &
         (data["commodity"] == commodity)
     ]
 
     if filtered.empty:
-        return {
-            "error": "No matching state/commodity found. Check exact spelling."
-        }
+        return {"error": "No matching state/commodity found."}
 
     markets = filtered["market"].unique()
 
@@ -56,9 +63,6 @@ def recommend_market(state, commodity, quantity):
                 day
             )
 
-            if isinstance(predicted_price, str):
-                continue
-
             transport_cost = 1000
             profit = (predicted_price * quantity) - transport_cost
 
@@ -67,16 +71,23 @@ def recommend_market(state, commodity, quantity):
                 best_market = market
                 best_price = predicted_price
 
-        except Exception:
+        except:
             continue
 
     if best_market is None:
-        return {
-            "error": "Prediction failed for available markets."
-        }
+        return {"error": "Prediction failed."}
+
+    explanation = generate_explanation(
+        state,
+        commodity,
+        best_market,
+        best_price,
+        best_profit
+    )
 
     return {
         "recommended_market": best_market,
         "predicted_price_per_unit": round(best_price, 2),
-        "expected_profit": round(best_profit, 2)
+        "expected_profit": round(best_profit, 2),
+        "ai_explanation": explanation
     }
