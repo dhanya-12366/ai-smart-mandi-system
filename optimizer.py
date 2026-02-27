@@ -17,16 +17,13 @@ data = data.rename(columns={
 data["date"] = pd.to_datetime(data["date"], errors="coerce")
 data = data.dropna()
 
-def generate_explanation(state, commodity, market, price, profit):
-    explanation = (
-        f"For {commodity} in {state}, the market '{market}' "
-        f"is recommended because it has the highest predicted price "
-        f"of ₹{round(price,2)} per unit. "
-        f"This results in an expected profit of ₹{round(profit,2)} "
-        f"after accounting for transport cost. "
-        f"The recommendation considers regional trends and seasonal patterns."
+def generate_explanation(state, commodity, best_market):
+    return (
+        f"For {commodity} in {state}, the system evaluated multiple markets "
+        f"and ranked them based on predicted profit. "
+        f"The market '{best_market}' offers the highest expected return "
+        f"considering regional trends and seasonal price variations."
     )
-    return explanation
 
 def recommend_market(state, commodity, quantity):
 
@@ -45,9 +42,7 @@ def recommend_market(state, commodity, quantity):
 
     markets = filtered["market"].unique()
 
-    best_market = None
-    best_profit = float("-inf")
-    best_price = None
+    results = []
 
     for market in markets:
         try:
@@ -66,28 +61,31 @@ def recommend_market(state, commodity, quantity):
             transport_cost = 1000
             profit = (predicted_price * quantity) - transport_cost
 
-            if profit > best_profit:
-                best_profit = profit
-                best_market = market
-                best_price = predicted_price
+            results.append({
+                "market": market,
+                "predicted_price": round(predicted_price, 2),
+                "expected_profit": round(profit, 2)
+            })
 
         except:
             continue
 
-    if best_market is None:
+    if not results:
         return {"error": "Prediction failed."}
+
+    # Sort by profit descending
+    results = sorted(results, key=lambda x: x["expected_profit"], reverse=True)
+
+    top_3 = results[:3]
 
     explanation = generate_explanation(
         state,
         commodity,
-        best_market,
-        best_price,
-        best_profit
+        top_3[0]["market"]
     )
 
     return {
-        "recommended_market": best_market,
-        "predicted_price_per_unit": round(best_price, 2),
-        "expected_profit": round(best_profit, 2),
+        "best_market": top_3[0],
+        "top_3_markets": top_3,
         "ai_explanation": explanation
     }
