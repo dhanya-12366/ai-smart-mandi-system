@@ -131,7 +131,8 @@ def predict_price(state, district, market, commodity, year, month, day):
         })
 
         prediction = model.predict(input_data)
-        return round(prediction[0], 2)
+        return float(prediction[0])
 
     except Exception as e:
-        return f"Error in prediction: {str(e)}"
+        print("Prediction Error:", e)
+        raise e
