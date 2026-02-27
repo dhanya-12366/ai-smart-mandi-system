@@ -1,0 +1,5 @@
+venv/
+venv_broken/
+__pycache__/
+*.pyc
+data/real_mandi_data.csv
